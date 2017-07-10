@@ -1,4 +1,5 @@
 import ast
+import astpp
 #
 # Build the following ast by hand:
 #
@@ -13,7 +14,7 @@ import ast
 
 def pdump(tree):
   """Print the ast tree."""
-  print(ast.dump(tree))
+  print(astpp.dump(tree))
 
 def wrap_args(args):
   """Wrap the strings passed in in ast arg objects."""
@@ -37,12 +38,13 @@ def mk_add(left, right):
   """Return an ast tree that adds the two arguments together."""
   return ast.BinOp(op=ast.Add(), left=left, right=right)
 
-def mk_name(s, rval=True):
-  """Make an ast Name object. If rval is true then it loads the name, otherwise stores it."""
-  if rval:
-    return ast.Name(s, ast.Load())
-  else:
-    return ast.Name(s, ast.Store())
+def mk_lval(s):
+  """Make an ast lval for a var"""
+  return ast.Name(s, ast.Store())
+
+def mk_rval(s):
+  """Make an ast lval for a var"""
+  return ast.Name(s, ast.Load())
 
 def mk_ret(t):
   """Return an ast tree that returns t which should be a tree."""
@@ -50,32 +52,33 @@ def mk_ret(t):
 
 def mk_ret_var(v):
   """Return an ast tree that returns the variable v which should be a string."""
-  return mk_ret(mk_name(v))
+  return mk_ret(mk_rval(v))
 
 def mk_assign_var(v, value):
     """Assign the value to v. V should be a string, v a tree."""
-    return ast.Assign(targets=[mk_name(v, False)], value=value)
+    return ast.Assign(targets=[mk_lval(v)], value=value)
 
 def mk_code(tree, file="<<generated>>"):
   """Compile the given ast into Python code."""
   tree = ast.fix_missing_locations(tree)
-  print("making code:", ast.dump(tree))
+  print("Compiling:")
+  pdump(tree)
   return compile(tree, file, 'exec')
 
-n1 = ['a', 'b']
-
-f_args = mk_arguments(n1)
-
-f_body = [
+def main():
+  n1 = ['a', 'b']
+  f_args = mk_arguments(n1)
+  f_body = [
         mk_assign_var('result',
-            mk_add(mk_name('a'), mk_name('b'))),
+            mk_add(mk_rval('a'), mk_rval('b'))),
         mk_ret_var('result')]
 
-fd = mk_func('add2', ['a', 'b'], f_body)
+  fd = mk_func('add2', ['a', 'b'], f_body)
+  m = ast.Module(name='foo', body=[fd])
+  c = mk_code(m)
+  x = eval(c)
+  import foo
+  print(foo.add2(1,44))
 
-m = ast.Module(body=[fd])
-
-c = mk_code(m)
-eval(c)
-
-print(add2(1,44))
+if __name__ == "__main__":
+  main()
